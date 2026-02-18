@@ -287,6 +287,67 @@ export interface NotificationTemplate {
   enabled?: boolean;          // alias for isActive
 }
 
+// ─── Onboarding ───
+
+export interface OnboardingState {
+  tenantId: string;
+  currentStep: number;           // 0-5
+  completedSteps: boolean[];     // [step1, step2, …step6]
+  entityType: EntityType | '';
+  // Step 2: Business details
+  tradingName: string;
+  legalName: string;
+  address: string;
+  contactEmail: string;
+  contactPhone: string;
+  industry: string;
+  // Step 3: Tax profile
+  companiesHouseNumber: string;
+  yearEnd: string;
+  utr: string;
+  niNumber: string;
+  bookkeepingBasis: 'cash' | 'accrual' | '';
+  chartTemplate: string;
+  partners: { name: string; email: string }[];
+  // Step 4: VAT
+  vatStatus: VatStatus | '';
+  vatNumber: string;
+  vatScheme: string;
+  vatEffectiveDate: string;
+  // Step 5: Bank
+  aggregatorProvider: AggregatorProvider | '';
+  bankConnected: boolean;
+  // Step 6: Team
+  invites: { email: string; role: 'client' | 'tenant_admin' | 'client_staff' }[];
+}
+
+export const defaultOnboardingState = (tenantId: string): OnboardingState => ({
+  tenantId,
+  currentStep: 0,
+  completedSteps: [false, false, false, false, false, false],
+  entityType: '',
+  tradingName: '',
+  legalName: '',
+  address: '',
+  contactEmail: '',
+  contactPhone: '',
+  industry: 'Dental',
+  companiesHouseNumber: '',
+  yearEnd: '31 March',
+  utr: '',
+  niNumber: '',
+  bookkeepingBasis: '',
+  chartTemplate: 'Dental',
+  partners: [{ name: '', email: '' }, { name: '', email: '' }],
+  vatStatus: '',
+  vatNumber: '',
+  vatScheme: '',
+  vatEffectiveDate: '',
+  aggregatorProvider: '',
+  bankConnected: false,
+  invites: [{ email: '', role: 'client' }],
+});
+
 // ─── App State ───
 
 export interface AppState {

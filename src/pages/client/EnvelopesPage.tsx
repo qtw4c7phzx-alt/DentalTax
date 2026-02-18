@@ -50,6 +50,7 @@ export function EnvelopesPage() {
   const {
     envelopes, documents, transactions, tickets,
     currentUser, addDocument, updateDocument, updateEnvelopeState, addToast, deleteDocument,
+    isOnboardingMinComplete,
   } = useStore();
 
   const tenantEnvelopes = envelopes.filter(e => e.tenantId === 'tenant-brightsmile');
@@ -82,6 +83,9 @@ export function EnvelopesPage() {
 
   const isOpen = selectedEnv?.state === 'open';
   const canUpload = isOpen;
+  const tenantId = currentUser?.tenantId || 'tenant-brightsmile';
+  const onboardingMinDone = isOnboardingMinComplete(tenantId);
+  const canSeal = isOpen && onboardingMinDone;
 
   // ─── Upload flow handlers ───
 
@@ -281,7 +285,7 @@ export function EnvelopesPage() {
                   <Button
                     variant="primary"
                     icon={<Lock className="w-4 h-4" />}
-                    onClick={() => setShowSealModal(true)}
+                    onClick={() => canSeal ? setShowSealModal(true) : addToast({ type: 'warning', title: 'Setup required', message: 'Complete your business setup (Entity, Business, Tax, VAT) before sealing envelopes.' })}
                   >
                     Seal Envelope
                   </Button>
@@ -678,6 +682,11 @@ export function EnvelopesPage() {
           </div>
 
           {/* Warnings */}
+          {!onboardingMinDone && (
+            <Alert variant="error" title="Business setup incomplete">
+              You must complete Entity Type, Business Details, Tax Profile, and VAT Profile before sealing envelopes.
+            </Alert>
+          )}
           {unmatchedCount > 0 && (
             <Alert variant="warning" title={`${unmatchedCount} unmatched transactions`}>
               There are transactions without matching documents. Your accountant may need to follow up.

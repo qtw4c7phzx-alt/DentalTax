@@ -1,22 +1,27 @@
 import { useStore } from '../../store';
-import { Card, StatCard, Chip } from '../../components/ui';
+import { Card, StatCard, Chip, Button, Alert } from '../../components/ui';
 import { useNavigate } from 'react-router-dom';
 import {
   FileBox, Landmark, MessageCircle, FileOutput, AlertTriangle,
-  ArrowRight, Upload, Clock,
+  ArrowRight, Upload, Clock, Rocket,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function DashboardPage() {
-  const { currentUser, envelopes, documents, transactions, tickets, outputs, bankAccounts } = useStore();
+  const { currentUser, envelopes, documents, transactions, tickets, outputs, bankAccounts, isOnboardingComplete, getOnboarding } = useStore();
   const navigate = useNavigate();
 
-  const tenantEnvelopes = envelopes.filter(e => e.tenantId === 'tenant-brightsmile');
+  const tid = currentUser?.tenantId || 'tenant-brightsmile';
+  const onboardingDone = isOnboardingComplete(tid);
+  const ob = getOnboarding(tid);
+  const nextIncompleteStep = ob.completedSteps.findIndex(s => !s);
+
+  const tenantEnvelopes = envelopes.filter(e => e.tenantId === tid);
   const currentEnvelope = tenantEnvelopes.find(e => e.state === 'open') || tenantEnvelopes[0];
   const openTickets = tickets.filter(t => t.status !== 'resolved' && t.status !== 'closed');
-  const unmatchedTxns = transactions.filter(t => t.status === 'unmatched' && t.tenantId === 'tenant-brightsmile');
+  const unmatchedTxns = transactions.filter(t => t.status === 'unmatched' && t.tenantId === tid);
   const publishedOutputs = outputs.filter(o => o.isPublished);
-  const mainBank = bankAccounts.find(b => b.tenantId === 'tenant-brightsmile' && b.consentStatus === 'active');
+  const mainBank = bankAccounts.find(b => b.tenantId === tid && b.consentStatus === 'active');
 
   return (
     <div className="p-8 max-w-7xl mx-auto animate-fade-in">
@@ -27,6 +32,27 @@ export function DashboardPage() {
         </h1>
         <p className="text-gray-500 mt-1">Here's an overview of your bookkeeping status.</p>
       </div>
+
+      {/* Onboarding CTA */}
+      {!onboardingDone && nextIncompleteStep >= 0 && (
+        <div className="mb-6 bg-primary-50 border border-primary-200 rounded-xl p-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+              <Rocket className="w-5 h-5 text-primary-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Complete your business setup</p>
+              <p className="text-xs text-gray-500 mt-0.5">Finish setting up your practice to unlock envelope sealing and full bookkeeping features.</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => navigate(`/onboarding?step=${nextIncompleteStep}`)}
+            icon={<ArrowRight className="w-4 h-4" />}
+          >
+            Continue Setup
+          </Button>
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

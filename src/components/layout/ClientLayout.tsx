@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useStore } from '../../store';
-import { Avatar, Chip } from '../ui';
+import { Avatar, Chip, Alert, Button } from '../ui';
 import {
   LayoutDashboard, FileBox, Landmark, MessageCircle, FileOutput,
   Users, Receipt, Settings, Palette, ChevronDown, LogOut, ArrowRightLeft,
+  Wrench,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -19,15 +20,35 @@ const clientNav = [
 ];
 
 export function ClientLayout() {
-  const { currentUser, portal, switchRole, setPortal } = useStore();
+  const { currentUser, portal, switchRole, switchToUser, setPortal, isOnboardingComplete, getOnboarding } = useStore();
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const tenantId = currentUser?.tenantId || '';
+  const onboardingDone = tenantId ? isOnboardingComplete(tenantId) : true;
+  const ob = tenantId ? getOnboarding(tenantId) : null;
+
+  // Auto-redirect to onboarding if not complete (first login scenario)
+  useEffect(() => {
+    if (tenantId && !onboardingDone && location.pathname !== '/onboarding') {
+      // Only auto-redirect if no steps have been completed at all (fresh user)
+      const anyDone = ob?.completedSteps.some(Boolean);
+      if (!anyDone) {
+        navigate('/onboarding');
+      }
+    }
+  }, [tenantId, onboardingDone, location.pathname, navigate, ob]);
+
+  // Find next incomplete step for the deep-link
+  const nextIncompleteStep = ob?.completedSteps.findIndex(s => !s) ?? 0;
 
   const roles = [
-    { role: 'client' as const, label: 'Client User', desc: 'Sophie Turner — BrightSmile' },
-    { role: 'tenant_admin' as const, label: 'Tenant Admin', desc: 'Dr. Richard Blake — BrightSmile' },
-    { role: 'accountant' as const, label: 'Accountant', desc: 'Charlotte Hughes' },
-    { role: 'platform_admin' as const, label: 'Platform Admin', desc: 'Alex Morgan' },
+    { role: 'client' as const, userId: 'user-t1-client', label: 'Client User', desc: 'Sophie Turner — BrightSmile' },
+    { role: 'tenant_admin' as const, userId: 'user-t1-admin', label: 'Tenant Admin', desc: 'Dr. Richard Blake — BrightSmile' },
+    { role: 'tenant_admin' as const, userId: 'user-t3-admin', label: 'New Practice (Demo)', desc: 'Dr. Raj Patel — Oakwood (not onboarded)' },
+    { role: 'accountant' as const, userId: 'user-accountant', label: 'Accountant', desc: 'Charlotte Hughes' },
+    { role: 'platform_admin' as const, userId: 'user-platform-admin', label: 'Platform Admin', desc: 'Alex Morgan' },
   ];
 
   return (
@@ -66,6 +87,18 @@ export function ClientLayout() {
 
         <div className="px-3 py-3 space-y-1 border-t border-primary-600">
           <NavLink
+            to="/onboarding"
+            className={({ isActive }) =>
+              clsx(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                isActive ? 'bg-primary-600 text-white' : 'text-primary-200 hover:bg-primary-600/50'
+              )
+            }
+          >
+            <Wrench className="w-4.5 h-4.5" />
+            Business Setup
+          </NavLink>
+          <NavLink
             to="/design-system"
             className={({ isActive }) =>
               clsx(
@@ -101,9 +134,9 @@ export function ClientLayout() {
                 </p>
                 {roles.map(r => (
                   <button
-                    key={r.role}
+                    key={r.userId}
                     onClick={() => {
-                      switchRole(r.role);
+                      switchToUser(r.userId);
                       setShowRoleSwitcher(false);
                       if (r.role === 'accountant' || r.role === 'platform_admin') {
                         setPortal('admin');
@@ -115,7 +148,7 @@ export function ClientLayout() {
                     }}
                     className={clsx(
                       'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer',
-                      currentUser?.role === r.role
+                      currentUser?.id === r.userId
                         ? 'bg-primary-50 text-primary-700'
                         : 'text-gray-700 hover:bg-gray-50'
                     )}
@@ -144,6 +177,21 @@ export function ClientLayout() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
+        {/* Onboarding incomplete banner */}
+        {tenantId && !onboardingDone && (
+          <div className="bg-warning-50 border-b border-warning-200 px-6 py-3 flex items-center justify-between">
+            <p className="text-sm text-warning-800">
+              <strong>Setup incomplete.</strong> Complete your business setup to unlock all features.
+            </p>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => navigate(`/onboarding?step=${nextIncompleteStep}`)}
+            >
+              Complete Setup
+            </Button>
+          </div>
+        )}
         <Outlet />
       </main>
     </div>

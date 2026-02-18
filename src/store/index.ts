@@ -3,8 +3,9 @@ import type {
   User, Tenant, Envelope, Document, BankAccount, BankTransaction,
   Match, Ticket, TicketMessage, Output, AuditLogEntry, Customer,
   Invoice, NotificationTemplate, UserRole, EnvelopeState, DocumentStatus,
-  TransactionStatus, TicketStatus,
+  TransactionStatus, TicketStatus, OnboardingState,
 } from '../types';
+import { defaultOnboardingState } from '../types';
 import {
   seedTenants, seedUsers, seedEnvelopes, seedDocuments,
   seedBankAccounts, seedTransactions, seedMatches, seedTickets,
@@ -21,6 +22,7 @@ interface AppStore {
   portal: 'client' | 'admin';
   setCurrentUser: (user: User | null) => void;
   switchRole: (role: UserRole) => void;
+  switchToUser: (userId: string) => void;
   setPortal: (portal: 'client' | 'admin') => void;
 
   // Tenants
@@ -92,6 +94,15 @@ interface AppStore {
   updateTemplate: (id: string, data: Partial<NotificationTemplate>) => void;
   updateNotificationTemplate: (id: string, data: Partial<NotificationTemplate>) => void; // alias
 
+  // Onboarding
+  onboardingStates: Record<string, OnboardingState>;
+  getOnboarding: (tenantId: string) => OnboardingState;
+  updateOnboarding: (tenantId: string, data: Partial<OnboardingState>) => void;
+  completeOnboardingStep: (tenantId: string, step: number) => void;
+  finishOnboarding: (tenantId: string) => void;
+  isOnboardingComplete: (tenantId: string) => boolean;
+  isOnboardingMinComplete: (tenantId: string) => boolean; // steps 1-4 done
+
   // Toast
   toasts: Toast[];
   addToast: (toastOrTitle: Omit<Toast, 'id'> | string, type?: Toast['type']) => void;
@@ -116,6 +127,17 @@ export const useStore = create<AppStore>((set, get) => ({
       set({
         currentUser: user,
         portal: role === 'client' || role === 'tenant_admin' ? 'client' : 'admin',
+        currentTenantId: user.tenantId || get().tenants[0]?.id || null,
+      });
+    }
+  },
+  switchToUser: (userId) => {
+    const user = seedUsers.find(u => u.id === userId);
+    if (user) {
+      const role = user.role;
+      set({
+        currentUser: user,
+        portal: role === 'client' || role === 'tenant_admin' || role === 'client_staff' || role === 'client_admin' ? 'client' : 'admin',
         currentTenantId: user.tenantId || get().tenants[0]?.id || null,
       });
     }
@@ -266,6 +288,63 @@ export const useStore = create<AppStore>((set, get) => ({
         t.id === id ? { ...t, ...data } : t
       ),
     })),
+
+  // Onboarding
+  onboardingStates: (() => {
+    // Load from localStorage if available
+    try {
+      const stored = localStorage.getItem('dentaltax-onboarding');
+      if (stored) return JSON.parse(stored) as Record<string, OnboardingState>;
+    } catch {}
+    // Default: BrightSmile & DentalCare are onboarded, Oakwood is not
+    return {
+      'tenant-brightsmile': { ...defaultOnboardingState('tenant-brightsmile'), completedSteps: [true, true, true, true, true, true] },
+      'tenant-dentalcare': { ...defaultOnboardingState('tenant-dentalcare'), completedSteps: [true, true, true, true, true, true] },
+    } as Record<string, OnboardingState>;
+  })(),
+  getOnboarding: (tenantId) => {
+    const s = get().onboardingStates[tenantId];
+    return s || defaultOnboardingState(tenantId);
+  },
+  updateOnboarding: (tenantId, data) => {
+    set(s => {
+      const current = s.onboardingStates[tenantId] || defaultOnboardingState(tenantId);
+      const updated = { ...s.onboardingStates, [tenantId]: { ...current, ...data } };
+      try { localStorage.setItem('dentaltax-onboarding', JSON.stringify(updated)); } catch {}
+      return { onboardingStates: updated };
+    });
+  },
+  completeOnboardingStep: (tenantId, step) => {
+    set(s => {
+      const current = s.onboardingStates[tenantId] || defaultOnboardingState(tenantId);
+      const completedSteps = [...current.completedSteps];
+      completedSteps[step] = true;
+      const updated = { ...s.onboardingStates, [tenantId]: { ...current, completedSteps } };
+      try { localStorage.setItem('dentaltax-onboarding', JSON.stringify(updated)); } catch {}
+      return { onboardingStates: updated };
+    });
+  },
+  finishOnboarding: (tenantId) => {
+    set(s => {
+      const current = s.onboardingStates[tenantId] || defaultOnboardingState(tenantId);
+      const completedSteps = current.completedSteps.map(() => true);
+      const updated = { ...s.onboardingStates, [tenantId]: { ...current, completedSteps } };
+      try { localStorage.setItem('dentaltax-onboarding', JSON.stringify(updated)); } catch {}
+      return {
+        onboardingStates: updated,
+        tenants: s.tenants.map(t => t.id === tenantId ? { ...t, isOnboarded: true } : t),
+      };
+    });
+  },
+  isOnboardingComplete: (tenantId) => {
+    const s = get().onboardingStates[tenantId];
+    return !!s && s.completedSteps.every(Boolean);
+  },
+  isOnboardingMinComplete: (tenantId) => {
+    const s = get().onboardingStates[tenantId];
+    // Steps 0-3 (entity, business, tax, vat) must be done
+    return !!s && s.completedSteps[0] && s.completedSteps[1] && s.completedSteps[2] && s.completedSteps[3];
+  },
 
   // Toasts
   toasts: [],
