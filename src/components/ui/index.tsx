@@ -414,27 +414,35 @@ interface DropzoneProps {
 export function Dropzone({ onFiles, onDrop, accept, label }: DropzoneProps) {
   const handleFiles = onFiles ?? onDrop ?? (() => {});
   const [dragOver, setDragOver] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(false);
     const files = Array.from(e.dataTransfer.files);
     if (files.length) handleFiles(files);
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    inputRef.current?.click();
+  };
+
   return (
     <div
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-      onDragLeave={() => setDragOver(false)}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+      onDragLeave={(e) => { e.stopPropagation(); setDragOver(false); }}
       onDrop={handleDrop}
+      onClick={handleClick}
       className={clsx(
-        'border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer',
+        'relative border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer',
         dragOver
           ? 'border-primary-400 bg-primary-50'
           : 'border-gray-300 hover:border-gray-400 bg-gray-50'
       )}
     >
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-2 pointer-events-none">
         <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center text-primary-500">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -446,17 +454,21 @@ export function Dropzone({ onFiles, onDrop, accept, label }: DropzoneProps) {
           </p>
           <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG up to 10MB each</p>
         </div>
-        <input
-          type="file"
-          multiple
-          accept={accept}
-          onChange={(e) => {
-            if (e.target.files) handleFiles(Array.from(e.target.files));
-          }}
-          className="absolute inset-0 opacity-0 cursor-pointer"
-          style={{ position: 'absolute', inset: 0 }}
-        />
       </div>
+      {/* Hidden file input — NOT covering the page */}
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        accept={accept}
+        onChange={(e) => {
+          if (e.target.files) {
+            handleFiles(Array.from(e.target.files));
+            e.target.value = '';  // reset so same file can be re-selected
+          }
+        }}
+        className="sr-only"
+      />
     </div>
   );
 }

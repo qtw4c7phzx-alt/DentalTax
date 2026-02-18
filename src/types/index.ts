@@ -79,6 +79,8 @@ export interface Envelope {
 
 // ─── Documents ───
 
+export type DocumentType = 'sales_invoice' | 'purchase_invoice' | 'receipt' | 'credit_note' | 'purchase_order' | 'bank_statement' | 'other';
+
 export interface Document {
   id: string;
   tenantId: string;
@@ -87,8 +89,9 @@ export interface Document {
   originalName?: string;
   fileSize: number;         // bytes
   mimeType: string;
-  type?: string;            // purchase_invoice, sales_invoice, receipt, bank_statement, payslip, hmrc_letter, credit_note, other
-  category?: string;        // alias for type
+  documentType?: DocumentType;
+  type?: string;            // legacy alias
+  category?: string;        // legacy alias
   amount?: number;
   date?: string;
   supplier?: string;

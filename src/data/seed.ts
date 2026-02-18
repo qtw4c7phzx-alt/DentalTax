@@ -2,7 +2,7 @@ import { v4 as uuid } from 'uuid';
 import type {
   Tenant, User, Envelope, Document, BankAccount, BankTransaction,
   Match, Ticket, TicketMessage, Output, AuditLogEntry, Customer,
-  Invoice, NotificationTemplate, TransactionStatus, UserRole,
+  Invoice, NotificationTemplate, TransactionStatus, UserRole, DocumentType,
 } from '../types';
 
 // ─── Helper ───
@@ -282,7 +282,19 @@ function makeDocuments(): Document[] {
     });
   }
 
-  return docs.map(d => ({ ...d, originalName: d.originalName || d.fileName }));
+  const categoryToDocType: Record<string, DocumentType> = {
+    receipt: 'receipt',
+    purchase_invoice: 'purchase_invoice',
+    sales_invoice: 'sales_invoice',
+    credit_note: 'credit_note',
+    bank_statement: 'bank_statement',
+  };
+
+  return docs.map(d => ({
+    ...d,
+    originalName: d.originalName || d.fileName,
+    documentType: d.documentType || categoryToDocType[d.category || ''] || 'other',
+  }));
 }
 
 export const seedDocuments = makeDocuments();
