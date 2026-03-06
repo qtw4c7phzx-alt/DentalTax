@@ -40,6 +40,8 @@ import { TenantSettingsPage } from './pages/admin/TenantSettingsPage';
 
 // Design System
 import { DesignSystemPage } from './pages/DesignSystemPage';
+// AI Chat
+import { ChatPage } from './pages/ChatPage';
 
 function App() {
   return (
@@ -59,6 +61,7 @@ function App() {
           <Route path="/customers" element={<CustomersPage />} />
           <Route path="/invoices" element={<InvoicesPage />} />
           <Route path="/design-system" element={<DesignSystemPage />} />
+          <Route path="/chat" element={<ChatPage />} />
         </Route>
 
         {/* Admin Portal */}

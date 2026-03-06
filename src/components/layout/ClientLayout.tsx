@@ -17,6 +17,7 @@ const clientNav = [
   { to: '/outputs', label: 'Outputs', icon: FileOutput },
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/invoices', label: 'Invoices', icon: Receipt },
+  { to: '/chat', label: 'AI Chat', icon: MessageCircle },
 ];
 
 export function ClientLayout() {
